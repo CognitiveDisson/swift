@@ -33,7 +33,7 @@ class SILTypeResolutionContext;
 
 /// Flags that describe the context of type checking a pattern or
 /// type.
-enum class TypeResolutionFlags : uint16_t {
+enum class TypeResolutionFlags : uint32_t {
   /// Whether to allow unspecified types within a pattern.
   AllowUnspecifiedTypes = 1 << 0,
 
@@ -90,6 +90,9 @@ enum class TypeResolutionFlags : uint16_t {
 
   /// Whether the name being resolved has a module selector or not.
   HasModuleSelector = 1 << 15,
+
+  /// We are in @yield_once coroutine declaration
+  Coroutine = 1 << 16,
 };
 
 /// Type resolution contexts that require special handling.

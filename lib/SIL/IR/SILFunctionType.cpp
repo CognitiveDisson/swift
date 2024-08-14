@@ -1617,6 +1617,10 @@ public:
       return;
     }
 
+    // Skip yields, they should've already processed elsewhere
+    if (isa<YieldResultType>(substType))
+      return;
+
     auto &substResultTLForConvention = TC.getTypeLowering(
         origType, substType, TypeExpansionContext::minimal());
     auto &substResultTL = TC.getTypeLowering(origType, substType,
@@ -5319,6 +5323,8 @@ TypeConverter::getLoweredFormalTypes(SILDeclRef constant,
         /* numOuterParams */ curried.getParams().size());
     extInfo = extInfo.withLifetimeDependencies(uncurriedLifetimes);
   }
+  if (innerExtInfo.isCoroutine())
+    extInfo = extInfo.withCoroutine(true);
 
   // Distributed thunks are always `async throws`
   if (constant.isDistributedThunk()) {
