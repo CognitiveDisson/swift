@@ -562,6 +562,13 @@ public:
     copy.setContext(context);
     return copy;
   }
+
+  inline
+  TypeResolutionOptions withBaseContext(TypeResolverContext context) const {
+    auto copy = *this;
+    copy.base = context;
+    return copy;
+  }
 };
 
 /// A function reference used to "open" the given unbound generic type
