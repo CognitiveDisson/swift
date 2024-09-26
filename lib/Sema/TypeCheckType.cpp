@@ -6350,6 +6350,7 @@ NeverNullType TypeResolver::resolveTupleType(TupleTypeRepr *repr,
         !moveOnlyElementIndex.has_value() &&
         !ty->hasUnboundGenericType() &&
         !ty->hasTypeVariable() &&
+        !ty->is<YieldResultType>() &&
         !isa<TupleTypeRepr>(tyR)) {
       auto contextTy = GenericEnvironment::mapTypeIntoEnvironment(
           resolution.getGenericSignature().getGenericEnvironment(), ty);
