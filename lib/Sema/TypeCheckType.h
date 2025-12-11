@@ -230,7 +230,7 @@ class TypeResolutionOptions {
   // The current type resolution context.
   Context context = Context::None;
   // TypeResolutionFlags
-  uint16_t flags = 0;
+  uint32_t flags = 0;
   static_assert(sizeof(TypeResolutionOptions::flags) ==
                     sizeof(TypeResolutionFlags),
                 "Flags size error");
