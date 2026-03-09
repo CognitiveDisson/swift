@@ -1984,6 +1984,11 @@ ERROR(objc_implementation_sendability_mismatch,none,
       "type %2 declared by the header",
       (ValueDecl *, Type, Type))
 
+ERROR(objc_implementation_ownership_mismatch,none,
+      "%kind0 has a parameter ownership modifier that does not match "
+      "the declaration in the header",
+      (ValueDecl *))
+
 ERROR(objc_implementation_required_attr_mismatch,none,
       "%kind0 should%select{ not|}2 be 'required' to match %kindonly1 declared "
       "by the header",
@@ -5814,6 +5819,21 @@ NOTE(property_requires_actor,none,
 ERROR(isolated_default_argument_context,none,
       "%0 default value in a %1 context", 
       (ActorIsolation, ActorIsolation))
+ERROR(different_actor_isolated_default_argument_context,none,
+      "default value for %kind0 must be %1-isolated",
+      (const ValueDecl *, Identifier))
+NOTE(note_expected_same_actor_default_argument,none,
+      "expected default value to have same isolation as %kind0 (got %1 and %2)",
+      (const ValueDecl *, Identifier, Identifier))
+ERROR(same_actor_isolated_default_argument_context,none,
+      "cannot use default value from different instance of %0",
+      (Identifier))
+NOTE(same_actor_isolated_default_argument_context_note,none,
+      "default value must be isolated to %0",
+      (Identifier))
+NOTE(same_actor_isolated_default_argument_context_specified_here,none,
+      "%0 specified here",
+      (Identifier))
 ERROR(conflicting_default_argument_isolation,none,
       "default argument cannot be both %0 and %1",
       (ActorIsolation, ActorIsolation))
@@ -7703,9 +7723,8 @@ GROUPED_ERROR(property_wrapper_ambiguous_enclosing_self_subscript,PropertyWrappe
       "property wrapper type %0 has multiple enclosing-self subscripts %1",
       (Type, DeclName))
 GROUPED_ERROR(property_wrapper_enclosing_self_subscript_keypath_type,PropertyWrappers,none,
-      "parameter %0 of enclosing-self subscript should have either "
-      "'WritableKeyPath<...>' or 'ReferenceWritableKeyPath<...>' type "
-      "(got %1)",
+      "parameter %0 of enclosing-self subscript should have read-only or "
+      "writable key path type (got %1)",
       (Identifier, Type))
 GROUPED_ERROR(property_wrapper_dynamic_self_type,PropertyWrappers,none,
       "property wrapper %select{wrapped value|projected value}0 cannot have "

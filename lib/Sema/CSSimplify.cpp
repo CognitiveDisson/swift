@@ -19,6 +19,7 @@
 #include "OpenedExistentials.h"
 #include "TypeCheckConcurrency.h"
 #include "TypeCheckEffects.h"
+#include "TypeChecker.h"
 #include "swift/AST/ASTPrinter.h"
 #include "swift/AST/ConformanceLookup.h"
 #include "swift/AST/Decl.h"
@@ -9910,11 +9911,10 @@ ConstraintSystem::simplifyForEachElementConstraint(
   auto *seqProto = contextualTy->castTo<ProtocolType>()->getDecl();
   auto isAsync = seqProto->isSpecificProtocol(KnownProtocolKind::AsyncSequence);
   auto isBorrowing =
-      seqProto->isSpecificProtocol(KnownProtocolKind::BorrowingSequence);
+      shouldUseBorrowingSequence(ctx, seqTy, isAsync, anchor.getStartLoc());
 
-  if (seqTy->isExistentialType() && !isAsync && isBorrowing) {
-    isBorrowing = false;
-    seqProto = ctx.getProtocol(KnownProtocolKind::Sequence);
+  if (isBorrowing) {
+    seqProto = ctx.getProtocol(KnownProtocolKind::BorrowingSequence);
   }
 
   auto *contextualLoc = getConstraintLocator(
@@ -10711,23 +10711,26 @@ performMemberLookup(ConstraintKind constraintKind, DeclNameRef memberName,
         return;
       }
 
-      // Cannot instantiate a protocol or reference a member on
-      // protocol composition type.
-      if (isa<ConstructorDecl>(decl) ||
-          instanceTy->is<ProtocolCompositionType>()) {
-        result.addUnviable(candidate,
-                           MemberLookupResult::UR_TypeMemberOnInstance);
+      if (getConcreteReplacementForProtocolSelfType(decl)) {
+        result.addViable(candidate);
         return;
       }
 
-      if (getConcreteReplacementForProtocolSelfType(decl)) {
-        result.addViable(candidate);
-      } else {
-        result.addUnviable(
+      // Cannot instantiate a protocol or reference a member on
+      // protocol composition type.
+      if (!memberLocator->isLastElement<LocatorPathElt::UnresolvedMember>()) {
+        if (isa<ConstructorDecl>(decl) ||
+            instanceTy->is<ProtocolCompositionType>()) {
+          result.addUnviable(candidate,
+                             MemberLookupResult::UR_TypeMemberOnInstance);
+          return;
+        }
+      }
+      result.addUnviable(
             candidate,
             MemberLookupResult::UR_InvalidStaticMemberOnProtocolMetatype);
-      }
       return;
+
     } else {
       if (!hasStaticMembers) {
         result.addUnviable(candidate,
@@ -11995,7 +11998,7 @@ ConstraintSystem::simplifyUnresolvedMemberChainBaseConstraint(
     return SolutionKind::Unsolved;
   }
 
-  if (baseTy->is<ProtocolType>()) {
+  if (baseTy->is<ProtocolType, ProtocolCompositionType>()) {
     auto *baseExpr =
         castToExpr<UnresolvedMemberChainResultExpr>(locator.getAnchor())
             ->getChainBase();
@@ -12007,10 +12010,22 @@ ConstraintSystem::simplifyUnresolvedMemberChainBaseConstraint(
 
     auto *memberRef = findResolvedMemberRef(memberLoc);
     if (memberRef && (memberRef->isStatic() || isa<TypeAliasDecl>(memberRef))) {
-      return simplifyConformsToConstraint(
-          resultTy, baseTy, ConstraintKind::ConformsTo,
-          getConstraintLocator(memberLoc, ConstraintLocator::MemberRefBase),
-          flags);
+      auto layout = baseTy->getExistentialLayout();
+      ASSERT(!layout.explicitSuperclass);
+      auto locator =
+        getConstraintLocator(memberLoc, ConstraintLocator::MemberRefBase);
+      auto lFlags = getDefaultDecompositionOptions(flags);
+
+      for (auto *proto : layout.getProtocols()) {
+        auto solution =
+          simplifyConformsToConstraint(resultTy, proto,
+                                       ConstraintKind::ConformsTo,
+                                       locator, lFlags);
+        if (solution == SolutionKind::Error) {
+          return SolutionKind::Error;
+        }
+      }
+      return SolutionKind::Solved;
     }
   }
 
