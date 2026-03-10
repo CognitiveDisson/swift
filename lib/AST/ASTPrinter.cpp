@@ -4686,15 +4686,16 @@ void PrintAST::visitFuncDecl(FuncDecl *decl) {
       });
 
     if (decl->isCoroutine()) {
-      TypeLoc YieldTyLoc(decl->getResultTypeRepr(),
+      TypeLoc YieldTyLoc(decl->getYieldTypeRepr(),
                          decl->getYieldsInterfaceType());
 
       Printer.printStructurePre(PrintStructureKind::CoroutineYieldsTypes);
       SWIFT_DEFER {
         Printer.printStructurePost(PrintStructureKind::CoroutineYieldsTypes);
       };
-      Printer << " " << tok::kw_yield << " ";
+      Printer<< " yields (";
       printTypeLoc(YieldTyLoc, getNonRecursiveOptions(decl));
+      Printer << ")";
     }
 
     Type ResultTy = decl->getResultInterfaceType();
