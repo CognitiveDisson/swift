@@ -2805,7 +2805,25 @@ static CanSILFunctionType getSILFunctionType(
     }
   } else if (substFnInterfaceType
                  ->isCoroutine()) { // Derive yield type for function type
-    assert(0 && "Does not support coroutine function types yet");
+    coroutineKind = SILCoroutineKind::YieldOnce;
+    assert(substFnInterfaceType->getYields().size() == 1 &&
+           "only support a single yield type");
+
+    auto sig = origType.hasGenericSignature() ? origType.getGenericSignature()
+                                              : genericSig;
+    auto origYieldType = origType.getFunctionYieldType(0);
+    auto reducedYieldType = sig.getReducedType(origYieldType.getType());
+    coroutineOrigYieldType = AbstractionPattern(sig, reducedYieldType);
+
+    auto yieldType = substFnInterfaceType->getYields().front();
+    auto valueType = yieldType.getType();
+    isInOutYield = yieldType.isInOut();
+    assert(isInOutYield == origType.getFunctionYieldFlags(0).isInOut());
+
+    if (reqtSubs)
+      valueType = valueType.subst(*reqtSubs);
+
+    coroutineSubstYieldType = valueType->getReducedType(genericSig);
   }
 
   bool shouldBuildSubstFunctionType = [&]{
